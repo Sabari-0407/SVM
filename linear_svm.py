@@ -16,9 +16,6 @@ CSV_PATH = "data.csv"          # Kaggle file name
 os.makedirs("plots", exist_ok=True)
 
 
-# ----------------------------------------------------------------------
-# 1. LOAD DATA
-# ----------------------------------------------------------------------
 def load_data(path=CSV_PATH):
     if os.path.exists(path):
         return pd.read_csv(path)
@@ -39,13 +36,8 @@ df = load_data()
 print("Shape:", df.shape)
 print(df.head(), "\n")
 
-# ----------------------------------------------------------------------
-# 2. PRE-PROCESSING
-# ----------------------------------------------------------------------
-# Remove useless columns ('id' and the empty 'Unnamed: 32' column)
 df = df.drop(columns=["id", "Unnamed: 32"], errors="ignore")
 
-# Encode target: M (malignant) = 1, B (benign) = 0
 df["diagnosis"] = df["diagnosis"].map({"M": 1, "B": 0})
 print("Missing values:", int(df.isna().sum().sum()))
 print("Class counts  :\n", df["diagnosis"].value_counts().rename({0: "Benign", 1: "Malignant"}), "\n")
@@ -56,9 +48,6 @@ y = df["diagnosis"]
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y)
 
-# ----------------------------------------------------------------------
-# 3. TRAIN LINEAR SVM  (scaling is essential for SVM -> use a pipeline)
-# ----------------------------------------------------------------------
 model = make_pipeline(StandardScaler(), SVC(kernel="linear", C=1.0))
 model.fit(X_train, y_train)
 
@@ -76,9 +65,6 @@ plt.title("Linear SVM - Confusion Matrix")
 plt.savefig("plots/linear_confusion_matrix.png", dpi=150, bbox_inches="tight")
 plt.close()
 
-# ----------------------------------------------------------------------
-# 4. HYPERPARAMETER TUNING (only C matters for a linear kernel)
-# ----------------------------------------------------------------------
 grid = GridSearchCV(
     make_pipeline(StandardScaler(), SVC(kernel="linear")),
     param_grid={"svc__C": [0.001, 0.01, 0.1, 1, 10, 100]},
@@ -88,9 +74,6 @@ print("Best C        :", grid.best_params_["svc__C"])
 print(f"Best CV acc   : {grid.best_score_:.4f}")
 print(f"Tuned test acc: {accuracy_score(y_test, grid.predict(X_test)):.4f}\n")
 
-# ----------------------------------------------------------------------
-# 5. INTERPRET THE MODEL: largest |weights| = most important features
-# ----------------------------------------------------------------------
 svm = model.named_steps["svc"]
 weights = pd.Series(svm.coef_[0], index=X.columns)
 top = weights.reindex(weights.abs().sort_values(ascending=False).index).head(10)
@@ -104,9 +87,6 @@ plt.tight_layout()
 plt.savefig("plots/linear_feature_weights.png", dpi=150)
 plt.close()
 
-# ----------------------------------------------------------------------
-# 6. 2-D VISUALISATION OF THE LINEAR BOUNDARY (2 features only)
-# ----------------------------------------------------------------------
 f1, f2 = "radius_mean", "texture_mean"
 X2 = StandardScaler().fit_transform(df[[f1, f2]])
 svm2 = SVC(kernel="linear", C=1.0).fit(X2, y)
